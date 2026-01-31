@@ -14,9 +14,9 @@ A tiny web tool that decodes Base64 (and Gemini Nano Banana JSON `inlineData`) i
 
 `base64-image-viewer` 是一个纯前端、零依赖的小工具页，用来：
 
-- ✅ 粘贴 **Base64 图片字符串**，直接渲染预览  
-- ✅ 粘贴 **Gemini Nano Banana** 的完整 JSON 响应体，从 `candidates[].content.parts[].inlineData` 提取图片并展示  
-- ✅ 显示基础元信息：类型、大小、分辨率（naturalWidth/Height）
+- 粘贴 **Base64 图片字符串**，直接渲染预览  
+- 粘贴 **Gemini Nano Banana** 的完整 JSON 响应体，从 `candidates[].content.parts[].inlineData` 提取图片并展示  
+- 显示基础元信息：类型、大小、分辨率（naturalWidth/Height）
 
 适合用来快速排查：接口返回的 base64 是否正确、图片 mimeType 是否匹配、Gemini 输出的 inlineData 是否能被正确解码。
 
