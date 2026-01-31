@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini Nano / Base64 Image Decoder</title>
+    <style>
+        :root {
+            --bg-color: #f9f9f9;
+            --surface-color: #ffffff;
+            --border-color: #e5e5e5;
+            --text-primary: #1a1a1a;
+            --text-secondary: #666666;
+            --accent-color: #10a37f;
+            --danger-color: #ef4444;
+            --radius: 12px;
+            --shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* 顶部导航 */
+        header {
+            padding: 0 2rem;
+            height: 60px;
+            background: var(--surface-color);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+
+        h1 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .badge {
+            background: #e0f2fe;
+            color: #5F90FC;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        main {
+            display: flex;
+            flex: 1;
+            height: calc(100vh - 60px);
+        }
+
+        /* 左侧输入区 */
+        .pane-input {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 1.5rem;
+            border-right: 1px solid var(--border-color);
+            background: var(--surface-color);
+            min-width: 320px;
+            max-width: 40%;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            gap: 1rem;
+        }
+
+        label {
+            font-size: 0.875rem;
+            color: var(--text-primary);
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .hint {
+            color: var(--text-secondary);
+            font-weight: 400;
+            font-size: 0.8rem;
+        }
+
+        textarea {
+            flex: 1;
+            width: 100%;
+            padding: 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+            font-size: 0.8rem;
+            line-height: 1.5;
+            resize: none;
+            outline: none;
+            transition: all 0.2s;
+            background: #fafafa;
+            color: #444;
+        }
+
+        textarea:focus {
+            border-color: var(--text-primary);
+            background: #fff;
+            box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.05);
+            color: #000;
+        }
+
+        textarea::placeholder {
+            color: #aaa;
+            line-height: 1.6;
+        }
+
+        /* 按钮组 */
+        .btn-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            padding: 0.75rem 1.5rem;
+            border-radius: var(--radius);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-primary {
+            flex: 2;
+            background-color: var(--text-primary);
+            color: white;
+            border: 1px solid var(--text-primary);
+        }
+
+        .btn-primary:hover {
+            background-color: #333;
+            transform: translateY(-1px);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            flex: 1;
+            background-color: white;
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background-color: #f5f5f5;
+            color: var(--danger-color);
+            border-color: #fca5a5;
+        }
+
+        /* 右侧展示区 */
+        .pane-preview {
+            flex: 1.5;
+            padding: 2rem;
+            background-color: #f4f4f5;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #a1a1aa;
+            text-align: center;
+        }
+
+        .empty-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.3;
+        }
+
+        .result-card {
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 1.5rem;
+            max-width: 800px;
+            width: 100%;
+            display: none;
+            animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .response-text {
+            font-size: 0.95rem;
+            line-height: 1.6;
+            color: var(--text-primary);
+            margin-bottom: 1.5rem;
+            white-space: pre-wrap;
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid #eee;
+        }
+
+        .image-wrapper {
+            width: 100%;
+            border-radius: 8px;
+            overflow: hidden;
+            background: repeating-conic-gradient(#f0f0f0 0% 25%, #ffffff 0% 50%) 50% / 20px 20px;
+            border: 1px solid #eee;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100px;
+        }
+
+        .image-wrapper img {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            object-fit: contain;
+        }
+
+        .metadata-bar {
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid #f0f0f0;
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .meta-tag {
+            font-size: 0.75rem;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            padding: 4px 10px;
+            border-radius: 100px;
+            color: var(--text-secondary);
+            font-family: monospace;
+        }
+
+        .error-toast {
+            position: fixed;
+            top: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #fef2f2;
+            color: #991b1b;
+            padding: 0.75rem 1.5rem;
+            border-radius: 50px;
+            border: 1px solid #fecaca;
+            box-shadow: 0 4px 12px rgba(220, 38, 38, 0.15);
+            display: none;
+            z-index: 100;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        @media (max-width: 768px) {
+            main {
+                flex-direction: column;
+                height: auto;
+            }
+
+            body {
+                height: auto;
+                overflow-y: auto;
+            }
+
+            .pane-input {
+                max-width: 100%;
+                min-height: 50vh;
+                border-right: none;
+                border-bottom: 1px solid var(--border-color);
+            }
+
+            .pane-preview {
+                min-height: 50vh;
+                padding: 1rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <h1>Base64 Image Viewer</h1>
+        <!-- <span class="badge">IMAGE VIEWER</span> -->
+        <!-- <a href="https://github.com/poixeai/base64-image-viewer" target="_blank">Github</a> -->
+
+        <a href="https://github.com/poixeai/base64-image-viewer" target="_blank" rel="noreferrer" class="gh-link"
+            title="Open on GitHub">
+            <img src="https://img.shields.io/github/stars/poixeai/base64-image-viewer?style=social" alt="GitHub stars"
+                loading="lazy" />
+        </a>
+
+    </header>
+
+    <main>
+        <!-- 左侧：输入区 -->
+        <section class="pane-input">
+            <div class="input-group">
+                <label for="jsonInput">
+                    Input Source
+                    <span class="hint">Paste JSON or Base64</span>
+                </label>
+                <textarea id="jsonInput" spellcheck="false"
+                    placeholder="在此粘贴内容，支持以下格式：&#10;&#10;1) Gemini Nano (Banana) 完整 JSON 响应体&#10;   (包含 candidates...inlineData)&#10;&#10;2) 标准 Base64 图片字符串&#10;   (data:image/png;base64,iVBOR...)&#10;&#10;3) 纯 Base64 编码&#10;   (无需前缀，直接 iVBOR...)"></textarea>
+
+                <div class="btn-group">
+                    <button id="renderBtn" class="btn-primary">解析并展示 (Render)</button>
+                    <button id="clearBtn" class="btn-secondary">清除 (Clear)</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 右侧：预览区 -->
+        <section class="pane-preview">
+            <div id="emptyState" class="empty-state">
+                <div class="empty-icon">🖼️</div>
+                <p>Waiting for input...</p>
+                <p style="font-size: 0.85rem; margin-top: 5px;">粘贴 JSON 或 Base64 点击解析查看图片</p>
+            </div>
+
+            <div id="resultCard" class="result-card">
+                <div id="responseText" class="response-text" style="display:none;"></div>
+
+                <div class="image-wrapper">
+                    <img id="previewImage" alt="Decoded Content" />
+                </div>
+
+                <div class="metadata-bar">
+                    <span class="meta-tag" id="metaType">TYPE: --</span>
+                    <span class="meta-tag" id="metaSize">SIZE: --</span>
+                    <span class="meta-tag" id="metaRes">RES: --</span>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <div id="errorToast" class="error-toast"></div>
+
+    <script>
+        const renderBtn = document.getElementById('renderBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const inputArea = document.getElementById('jsonInput');
+        const resultCard = document.getElementById('resultCard');
+        const emptyState = document.getElementById('emptyState');
+        const previewImg = document.getElementById('previewImage');
+        const responseTextDiv = document.getElementById('responseText');
+        const metaSize = document.getElementById('metaSize');
+        const metaRes = document.getElementById('metaRes');
+        const metaType = document.getElementById('metaType');
+        const errorToast = document.getElementById('errorToast');
+
+        renderBtn.addEventListener('click', handleRender);
+        clearBtn.addEventListener('click', handleClear);
+
+        function handleClear() {
+            // 1. 先清除输入框
+            inputArea.value = '';
+            inputArea.focus();
+
+            // 2. 关键修复：在清空 src 之前，移除 onerror 监听器
+            // 否则 src='' 会被浏览器视为图片加载失败，从而触发错误提示
+            previewImg.onload = null;
+            previewImg.onerror = null;
+            previewImg.src = '';
+
+            // 3. 重置 UI 状态
+            resultCard.style.display = 'none';
+            emptyState.style.display = 'flex';
+            responseTextDiv.style.display = 'none';
+            hideError();
+        }
+
+        function handleRender() {
+            hideError();
+            const rawInput = inputArea.value.trim();
+
+            if (!rawInput) {
+                showError("输入为空，请粘贴 JSON 或 Base64 数据");
+                return;
+            }
+
+            let imageData = null;
+            let mimeType = 'image/png';
+            let textContent = '';
+            let detectedType = 'Unknown';
+
+            try {
+                // 1. 尝试识别 JSON (Gemini Nano 响应体)
+                if (rawInput.startsWith('{') && rawInput.endsWith('}')) {
+                    try {
+                        const json = JSON.parse(rawInput);
+                        detectedType = 'JSON (Gemini)';
+
+                        if (json.candidates && Array.isArray(json.candidates) && json.candidates.length > 0) {
+                            const content = json.candidates[0].content;
+                            if (content && content.parts && Array.isArray(content.parts)) {
+                                content.parts.forEach(part => {
+                                    if (part.text) {
+                                        textContent += part.text + '\n';
+                                    }
+                                    if (part.inlineData) {
+                                        imageData = part.inlineData.data;
+                                        mimeType = part.inlineData.mimeType || 'image/png';
+                                    }
+                                });
+                            }
+                        }
+
+                        if (!imageData) {
+                            throw new Error("JSON 解析成功，但未找到 inlineData 图片数据");
+                        }
+
+                    } catch (jsonErr) {
+                        if (jsonErr.message.includes("inlineData")) throw jsonErr;
+                        throw new Error("JSON 格式无效: " + jsonErr.message);
+                    }
+                }
+                // 2. 尝试 Base64
+                else {
+                    detectedType = 'Raw Base64';
+                    let cleanStr = rawInput.replace(/(\r\n|\n|\r)/gm, "");
+                    const match = cleanStr.match(/^data:(image\/[a-zA-Z+]+);base64,(.+)$/);
+                    if (match) {
+                        mimeType = match[1];
+                        imageData = match[2];
+                    } else {
+                        imageData = cleanStr;
+                        // 简单的预检查
+                        if (!/^[A-Za-z0-9+/=]+$/.test(imageData)) {
+                            console.warn("Input contains non-base64 characters.");
+                        }
+                    }
+                }
+
+                renderUI(imageData, mimeType, textContent, detectedType);
+
+            } catch (e) {
+                console.error(e);
+                showError(e.message);
+            }
+        }
+
+        function renderUI(base64Data, mime, text, typeLabel) {
+            emptyState.style.display = 'none';
+            resultCard.style.display = 'block';
+
+            // 设置图片源
+            const src = `data:${mime};base64,${base64Data}`;
+
+            // 重要：先设置监听器，再赋值 src
+            previewImg.onload = function () {
+                metaRes.textContent = `RES: ${this.naturalWidth} x ${this.naturalHeight} px`;
+            };
+
+            previewImg.onerror = function () {
+                // 只有在非空 src 时才报错
+                if (this.src && this.src !== window.location.href) {
+                    showError("无法渲染图片，Base64 数据可能已损坏或格式不支持。");
+                }
+            };
+
+            previewImg.src = src;
+
+            // 文本区域
+            if (text && text.trim().length > 0) {
+                responseTextDiv.textContent = text.trim();
+                responseTextDiv.style.display = 'block';
+            } else {
+                responseTextDiv.style.display = 'none';
+            }
+
+            // 更新元数据
+            metaType.textContent = `TYPE: ${typeLabel}`;
+
+            const stringLength = base64Data.length - (base64Data.match(/=/g) || []).length;
+            const sizeInBytes = stringLength * 0.75;
+
+            if (sizeInBytes < 1024 * 1024) {
+                metaSize.textContent = `SIZE: ${(sizeInBytes / 1024).toFixed(1)} KB`;
+            } else {
+                metaSize.textContent = `SIZE: ${(sizeInBytes / (1024 * 1024)).toFixed(2)} MB`;
+            }
+        }
+
+        function showError(msg) {
+            errorToast.textContent = "Error: " + msg;
+            errorToast.style.display = 'block';
+            errorToast.style.animation = 'none';
+            errorToast.offsetHeight;
+            errorToast.style.animation = 'slideUp 0.3s forwards';
+            setTimeout(() => { errorToast.style.display = 'none'; }, 4000);
+        }
+
+        function hideError() {
+            errorToast.style.display = 'none';
+        }
+    </script>
+</body>
+
+</html>
